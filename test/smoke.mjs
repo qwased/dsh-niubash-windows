@@ -163,6 +163,21 @@ await check('a missing niu.exe rejects result() with a spawn error', async () =>
   await assert.rejects(() => proc.result(), (error) => error.code === 'ENOENT')
 })
 
+await check('a nonexistent workdir is refused with the real cause', async () => {
+  const missing = join(tmpdir(), 'definitely-missing-dir-niubash')
+  assert.throws(
+    () =>
+      spawnNiu({
+        niuPath,
+        command: 'echo x',
+        workdir: missing,
+        env: buildEnv({}),
+        timeoutMs: 5000,
+      }),
+    (error) => error.message === `working directory does not exist: ${missing}`,
+  )
+})
+
 await check('bash state does not persist between calls', async () => {
   await run('export SMOKE_STATE=kept; cd /tmp').result()
   const result = await run('echo "${SMOKE_STATE:-unset}"').result()

@@ -27,7 +27,7 @@ import {
 } from '../lib/prompt.js'
 import { StreamCapture } from '../lib/capture.js'
 import { renderNiubashResult, renderPromoted, ringDelta, renderJobRead } from '../lib/render.js'
-import { describeStartupError, resolveWorkdir, buildEnv, toolAborted } from '../lib/util.js'
+import { describeStartupError, resolveWorkdir, buildEnv, toolAborted, workdirError } from '../lib/util.js'
 
 // ---------------------------------------------------------------- niu.js
 
@@ -417,4 +417,15 @@ test('toolAborted carries the AbortError name', () => {
   const error = toolAborted()
   assert.equal(error.name, 'AbortError')
   assert.match(error.message, /aborted/)
+})
+
+test('workdirError: missing directory is reported as itself, not as niu.exe', (t) => {
+  const dir = mkdtempSync(join(tmpdir(), 'niubash-wd-'))
+  t.after(() => rmSync(dir, { recursive: true, force: true }))
+  assert.equal(workdirError(dir), undefined)
+  const missing = join(dir, 'no-such-subdir')
+  assert.equal(workdirError(missing), `working directory does not exist: ${missing}`)
+  const file = join(dir, 'a-file.txt')
+  writeFileSync(file, 'x')
+  assert.equal(workdirError(file), `workdir is not a directory: ${file}`)
 })

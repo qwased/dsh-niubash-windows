@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.1
+
+- Fix misleading diagnostics (tester anomaly A1): a nonexistent or non-directory
+  `workdir` is now refused before spawn with `working directory does not exist:
+  <path>` (invalid-args at the tool layer, synchronous guard in the process
+  layer) instead of being misreported as a missing niu.exe — spawn ENOENT looks
+  identical for a bad cwd and a bad executable.
+
 ## 0.1.0
 
 Initial release, ported from pi-niubash-windows 0.1.0 onto DeepSeek Harness.
