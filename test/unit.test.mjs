@@ -28,6 +28,13 @@ import {
 import { StreamCapture } from '../lib/capture.js'
 import { renderNiubashResult, renderPromoted, ringDelta, renderJobRead } from '../lib/render.js'
 import { describeStartupError, resolveWorkdir, buildEnv, toolAborted, workdirError } from '../lib/util.js'
+import {
+  parseSkillFrontmatter,
+  registerNiubashSkill,
+  SKILL_NAME,
+  PROVIDER_NAME,
+  BUNDLED_SKILL_RANK,
+} from '../lib/skill.js'
 
 // ---------------------------------------------------------------- niu.js
 
@@ -428,4 +435,96 @@ test('workdirError: missing directory is reported as itself, not as niu.exe', (t
   const file = join(dir, 'a-file.txt')
   writeFileSync(file, 'x')
   assert.equal(workdirError(file), `workdir is not a directory: ${file}`)
+})
+
+// ---------------------------------------------------------------- skill.js
+
+const skillFile = (dir) => join(dir, 'SKILL.md')
+const writeSkill = (dir, raw) => { mkdirSync(dir, { recursive: true }); writeFileSync(skillFile(dir), raw) }
+const MINIMAL_SKILL = '---\nname: niubash\ndescription: Troubleshooting skill for tests.\nlicense: MIT\nmetadata:\n  upstream: https://unixwin.dev\n---\n\n# Body\n\nInstructions.\n'
+
+function fakeSkillCtx() {
+  const warnings = []
+  let provider
+  let invalidated = 0
+  const control = { invalidate: () => { invalidated += 1 }, signal: new AbortController().signal }
+  const ctx = {
+    skills: { registerProvider: (factory) => { provider = factory(control); return () => {} } },
+    logger: { warn: (message) => warnings.push(message) },
+  }
+  return { ctx, warnings, provider: () => provider, invalidated: () => invalidated }
+}
+
+test('skill: the packaged SKILL.md parses and keeps the routing gate', () => {
+  const raw = readFileSync(new URL('../skill/SKILL.md', import.meta.url), 'utf8')
+  const parsed = parseSkillFrontmatter(raw)
+  assert.equal(parsed.name, SKILL_NAME)
+  assert.ok(parsed.description.length > 100)
+  assert.match(parsed.description, /Do not load for ordinary command execution/)
+  // A plain YAML scalar must not contain ": " — the filesystem provider would reject the file.
+  assert.ok(!parsed.description.includes(': '))
+  assert.ok(parsed.content.startsWith('# Niubash'))
+  assert.ok(!parsed.content.includes('name: niubash'))
+  assert.match(parsed.content, /## DSH result contract/)
+  assert.match(parsed.content, /## PTC \(run_code\) bridge rules/)
+})
+
+test('skill: frontmatter parser unquotes scalars and ignores nested metadata', () => {
+  const parsed = parseSkillFrontmatter('---\nname: "niubash"\ndescription: \'Quoted description.\'\nmetadata:\n  upstream: https://unixwin.dev\n---\nBody.\n')
+  assert.equal(parsed.name, 'niubash')
+  assert.equal(parsed.description, 'Quoted description.')
+  assert.equal(parsed.content, 'Body.')
+})
+
+test('skill: frontmatter parser rejects missing or unsupported input', () => {
+  assert.throws(() => parseSkillFrontmatter('# no frontmatter'), /no YAML frontmatter/)
+  assert.throws(() => parseSkillFrontmatter('---\nname: niubash\n---\nBody.'), /requires name and description/)
+  assert.throws(() => parseSkillFrontmatter('---\nname: niubash\ndescription: >-\n  folded\n---\nBody.'), /block scalar/)
+  assert.throws(() => parseSkillFrontmatter('---\nname: Not_Kebab\ndescription: x\n---\nBody.'), /invalid skill name/)
+})
+
+test('skill: provider lists a bundled candidate and loads its body', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'niubash-skill-'))
+  const harness = fakeSkillCtx()
+  registerNiubashSkill(harness.ctx, { skillDir: dir })
+  writeSkill(dir, MINIMAL_SKILL)
+  const candidates = await harness.provider().list({ signal: undefined })
+  assert.equal(candidates.length, 1)
+  const candidate = candidates[0]
+  assert.equal(candidate.name, SKILL_NAME)
+  assert.equal(candidate.description, 'Troubleshooting skill for tests.')
+  assert.equal(candidate.provider, PROVIDER_NAME)
+  assert.equal(candidate.source, 'bundled')
+  assert.equal(candidate.rank, BUNDLED_SKILL_RANK)
+  assert.deepEqual(candidate.invocation, { modelInvocable: true, userInvocable: true })
+  assert.equal(candidate.resourceBase.kind, 'directory')
+  assert.ok(!candidate.resourceBase.path.includes('\\'))
+  assert.equal(candidate.locator, skillFile(dir))
+  const definition = await harness.provider().get(candidate, { signal: undefined })
+  assert.equal(definition.content, '# Body\n\nInstructions.')
+  assert.ok(!('rank' in definition) && !('locator' in definition))
+  assert.equal(harness.warnings.length, 0)
+})
+
+test('skill: a missing SKILL.md is a persistent failure (complete empty catalog, invalidate on get)', async () => {
+  const dir = join(mkdtempSync(join(tmpdir(), 'niubash-skill-')), 'absent')
+  const harness = fakeSkillCtx()
+  registerNiubashSkill(harness.ctx, { skillDir: dir })
+  const observation = await harness.provider().list({ signal: undefined })
+  assert.deepEqual(observation, { candidates: [], complete: true })
+  await harness.provider().list({ signal: undefined })
+  assert.equal(harness.warnings.length, 1) // each distinct failure reported once
+  const candidate = { name: SKILL_NAME, description: 'x', invocation: { modelInvocable: true, userInvocable: true }, provider: PROVIDER_NAME, source: 'bundled', rank: BUNDLED_SKILL_RANK, locator: skillFile(dir) }
+  assert.equal(await harness.provider().get(candidate, { signal: undefined }), undefined)
+  assert.equal(harness.invalidated(), 1)
+})
+
+test('skill: invalid frontmatter is persistent and keeps the catalog complete', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'niubash-skill-'))
+  const harness = fakeSkillCtx()
+  registerNiubashSkill(harness.ctx, { skillDir: dir })
+  writeSkill(dir, '# no frontmatter at all')
+  const observation = await harness.provider().list({ signal: undefined })
+  assert.deepEqual(observation, { candidates: [], complete: true })
+  assert.equal(harness.warnings.length, 1)
 })

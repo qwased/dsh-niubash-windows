@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "Niubash for Windows",
-    "description": "Adds a niubash tool that runs bash commands through Niubash (native Windows bash, no WSL/MSYS), coexists with the built-in pwsh tool, and makes niubash the default shell via prompt guidance. Background jobs, timeout promotion, tail truncation with spill files, and an actionable unavailable stub when niu.exe is missing.",
+    "description": "Adds a niubash tool that runs bash commands through Niubash (native Windows bash, no WSL/MSYS), coexists with the built-in pwsh tool, and makes niubash the default shell via prompt guidance. Background jobs, timeout promotion, tail truncation with spill files, and an actionable unavailable stub when niu.exe is missing. Also registers a bundled niubash troubleshooting skill (deep engine contract, PTC bridge rules, wpm/doctor workflows) with the skill registry.",
     "detail": "docs/DETAIL.md"
   }
 }

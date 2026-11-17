@@ -70,6 +70,7 @@ Row config (Plugins page) or the bundle patch:
 | `enableRunInBackground` | `true` | Expose `run_in_background` while jobs are composed |
 | `promoteOnTimeout` | `true` | Timed-out foreground commands keep running as jobs |
 | `preferPrompt` | `true` | Inject the "prefer niubash over pwsh" prompt section |
+| `registerSkill` | `true` | Register the bundled `niubash` troubleshooting skill |
 
 `niu.exe` resolution order: `niuPath` config → `DSH_NIUBASH_PATH` →
 `PI_NIUBASH_PATH` (continuity with the Pi extension) → `PATH` →
@@ -95,6 +96,25 @@ path for the stock tool. `pwd` prints the `/c/...` dialect while native
 children receive `C:\...`. A single command is limited to about 32K characters
 by the Windows command line — write longer scripts to a file and run it.
 
+## Bundled skill
+
+The package ships a troubleshooting skill (`skill/SKILL.md` +
+`skill/references/`) and registers it with the DSH skill registry as provider
+`dsh-niubash-windows` (`source: bundled`, rank 600). It installs with the
+package — no separate `~/.dsh/skills` entry — and appears in the skill catalog
+of new sessions after a DSH restart. The skill is deliberately gated: it loads
+for path anomalies, missing/surprising commands, wpm/doctor repair, niu
+debugger questions, PTC serialization failures, and engine-vs-bash divergence,
+not for ordinary command execution (the tool description owns that contract).
+
+Adapted from the pi-niubash-windows skill: the Pi codemode payload section is
+replaced by the DSH result contract (separate streams, exit-code markers,
+timeout promotion, spill paths) and PTC `run_code` bridge rules (lossless-JSON
+arguments and return values). `references/` are verbatim upstream Niubash
+snapshots with SHA256 provenance in `ATTRIBUTION.md`. A user-level
+`~/.dsh/skills/niubash` (rank 400) or project skill overrides the bundled copy;
+set `registerSkill: false` to opt out entirely.
+
 ## Known limitations
 
 - No file-sandbox enforcement (see Safety above); confining sessions must use
@@ -105,7 +125,9 @@ by the Windows command line — write longer scripts to a file and run it.
 - Niubash 1.5.0 pipeline argv defect (upstream rubash#3511): a double-quoted
   pipeline argument mixing a live command substitution with an apostrophe
   delivers U+0017 instead of `'`. Compute the substitution into a variable
-  before the pipeline until the fixed engine ships.
+  before the pipeline until the fixed engine ships. Not reproduced on rubash
+  `29bbf52481c3` (verified 2026-11-17); check the pin with
+  `"$NIU_SHELL" --version`.
 - The child environment inherits the harness environment (minus ambient
   `DSH_*`, plus the managed snapshot); unlike the pwsh executor it does not
   scrub ambient credentials beyond that.
@@ -128,6 +150,8 @@ lib/process.js    niu -c process handles (deadline, tree kill, observed reads)
 lib/render.js     model-facing result text (pwsh marker parity)
 lib/util.js       pure helpers: workdir, env layering, startup-error guidance
 lib/tool.js       defineTool + ctx.jobs adaptation (background, promotion)
+lib/skill.js      bundled skill provider (frontmatter parse, list/get)
+skill/            SKILL.md + verbatim upstream references (troubleshooting)
 test/             unit tests and the opt-in smoke test
 docs/DETAIL.md    plugin detail page
 ```
@@ -137,4 +161,6 @@ docs/DETAIL.md    plugin detail page
 MIT — see [LICENSE](LICENSE). Ported from
 [pi-niubash-windows](https://github.com/qwased/pi-niubash-windows) (MIT,
 Copyright (c) 2026 qwased); the execution/job/marker contracts follow
-DeepSeek Harness's `dsh-tool-pwsh` (MIT).
+DeepSeek Harness's `dsh-tool-pwsh` (MIT). The bundled skill adapts the
+pi-niubash-windows skill (same upstream); `skill/references/` keeps verbatim
+Niubash documentation snapshots under their upstream MIT license.

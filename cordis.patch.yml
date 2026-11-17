@@ -14,6 +14,7 @@
 #   enableRunInBackground: true # expose run_in_background while jobs are composed
 #   promoteOnTimeout: true      # timed-out foreground commands keep running as jobs
 #   preferPrompt: true          # inject the "prefer niubash over pwsh" section
+#   registerSkill: true         # register the bundled niubash troubleshooting skill
 - insert:
     - id: niubash
       name: 'dsh-niubash-windows'

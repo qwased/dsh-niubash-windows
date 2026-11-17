@@ -1,7 +1,7 @@
 {
   "name": "dsh-niubash-windows",
-  "version": "0.1.1",
-  "description": "Niubash (native Windows bash) as a DSH tool, coexisting with pwsh and preferred by prompt guidance.",
+  "version": "0.2.0",
+  "description": "Niubash (native Windows bash) as a DSH tool, coexisting with pwsh and preferred by prompt guidance; ships a bundled troubleshooting skill registered with the skill registry.",
   "private": true,
   "license": "MIT",
   "type": "module",
@@ -20,7 +20,8 @@
     "docs",
     "README.md",
     "CHANGELOG.md",
-    "LICENSE"
+    "LICENSE",
+    "skill"
   ],
   "scripts": {
     "test": "node --test test/unit.test.mjs",
@@ -33,7 +34,8 @@
     "niubash",
     "bash",
     "windows",
-    "shell"
+    "shell",
+    "skill"
   ],
   "engines": {
     "node": ">=22",

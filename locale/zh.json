@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "Niubash Windows 命令行",
-    "description": "新增 niubash 工具，通过 Niubash（原生 Windows bash，无需 WSL/MSYS）执行 bash 命令；与内置 pwsh 工具共存，并通过提示词让 niubash 成为默认 shell。支持后台任务、超时转后台、尾部截断与完整输出落盘；找不到 niu.exe 时注册带可操作错误信息的占位工具。",
+    "description": "新增 niubash 工具，通过 Niubash（原生 Windows bash，无需 WSL/MSYS）执行 bash 命令；与内置 pwsh 工具共存，并通过提示词让 niubash 成为默认 shell。支持后台任务、超时转后台、尾部截断与完整输出落盘；找不到 niu.exe 时注册带可操作错误信息的占位工具。同时向技能注册表注册随包内置的 niubash 排障技能（引擎深度契约、PTC 桥接规则、wpm/doctor 工作流）。",
     "detail": "docs/DETAIL.md"
   }
 }

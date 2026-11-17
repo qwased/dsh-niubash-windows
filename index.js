@@ -17,6 +17,7 @@ import z from '@deepseek-ai/schemastery'
 import { isSupportedPlatform, resolveNiu } from './lib/niu.js'
 import { buildNiubashTool, buildUnavailableTool } from './lib/tool.js'
 import { PROMPT_SECTION, UNAVAILABLE_SECTION } from './lib/prompt.js'
+import { registerNiubashSkill } from './lib/skill.js'
 
 /** Cordis plugin name. */
 export const name = 'niubash-windows'
@@ -35,6 +36,7 @@ export const Config = z.object({
   enableRunInBackground: z.boolean().default(true),
   promoteOnTimeout: z.boolean().default(true),
   preferPrompt: z.boolean().default(true),
+  registerSkill: z.boolean().default(true),
 })
 
 /**
@@ -43,6 +45,16 @@ export const Config = z.object({
  */
 export function apply(ctx, config = {}) {
   if (!isSupportedPlatform()) return
+
+  // The bundled troubleshooting skill ships in this package's skill/ directory
+  // and registers whenever the skill registry is composed — even when niu.exe
+  // is missing, because install/link repair is exactly when it is needed.
+  // Optional injection mirrors the jobs seam: no skills service, no skill.
+  if (config.registerSkill !== false) {
+    ctx.inject(['skills'], (skillCtx) => {
+      registerNiubashSkill(skillCtx)
+    })
+  }
 
   const resolution = resolveNiu({ configuredPath: config.niuPath })
 

@@ -20,6 +20,10 @@ Cygwin) — without giving up PowerShell.
   running as a background job instead of being killed.
 - When `niu.exe` is missing, the tool registers as an actionable stub (every
   call lists the checked paths) and the prompt falls back to pwsh.
+- A bundled `niubash` troubleshooting skill (deep engine contract, DSH result
+  contract, PTC bridge rules, wpm/doctor workflows) registers with the skill
+  registry and installs with the package; it loads for anomalies, not for
+  ordinary command execution.
 
 ## Usage
 
@@ -32,7 +36,7 @@ calls look like:
 
 Configuration lives in the plugin row (Plugins page): `niuPath`, `timeoutMs`,
 `maxTimeoutMs`, `maxOutputBytes`, `maxSpillBytes`, `graceMs`,
-`enableRunInBackground`, `promoteOnTimeout`, `preferPrompt`. Environment
+`enableRunInBackground`, `promoteOnTimeout`, `preferPrompt`, `registerSkill`. Environment
 override: `DSH_NIUBASH_PATH` (absolute path to `niu.exe`).
 
 ## Essential limitations
