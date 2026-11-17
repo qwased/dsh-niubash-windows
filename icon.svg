@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <!-- dsh-niubash-windows icon: a terminal window with bull horns (niu = bull). Original artwork, MIT. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1d2733"/>
+      <stop offset="1" stop-color="#10161d"/>
+    </linearGradient>
+  </defs>
+  <!-- horns -->
+  <path d="M28 34 C 18 30, 12 20, 14 10 C 24 14, 32 22, 34 32 Z" fill="#e8b04b"/>
+  <path d="M100 34 C 110 30, 116 20, 114 10 C 104 14, 96 22, 94 32 Z" fill="#e8b04b"/>
+  <!-- terminal body -->
+  <rect x="14" y="28" width="100" height="82" rx="12" fill="url(#bg)" stroke="#3a4a5c" stroke-width="2"/>
+  <!-- title bar -->
+  <path d="M14 40 a12 12 0 0 1 12 -12 h76 a12 12 0 0 1 12 12 v6 h-100 z" fill="#2c3a4a"/>
+  <circle cx="26" cy="37" r="3.2" fill="#ff6058"/>
+  <circle cx="37" cy="37" r="3.2" fill="#ffbd2e"/>
+  <circle cx="48" cy="37" r="3.2" fill="#28c840"/>
+  <!-- prompt >_ -->
+  <path d="M30 62 L 46 74 L 30 86" fill="none" stroke="#4ade80" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="54" y="82" width="26" height="7" rx="3.5" fill="#4ade80"/>
+  <!-- bash tail: small pipe glyph -->
+  <path d="M92 60 v22 M86 82 h12" fill="none" stroke="#7dd3fc" stroke-width="5" stroke-linecap="round"/>
+</svg>

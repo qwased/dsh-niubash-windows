@@ -1,0 +1,20 @@
+# dsh-niubash-windows — Niubash (native Windows bash) as a DSH tool.
+#
+# Inserts one Host plugin row. The plugin registers the `niubash` tool next to
+# the built-in `pwsh` tool (which it never touches) and adds a prompt section
+# that makes niubash the default shell on Windows. Outside Windows it is inert.
+#
+# Config (all fields optional; defaults shown):
+#   niuPath: ''                 # explicit niu.exe path; authoritative when set
+#   timeoutMs: 120000           # default foreground timeout
+#   maxTimeoutMs: 600000        # cap for per-call timeout overrides
+#   maxOutputBytes: 64000       # per-stream in-memory tail; overflow spills to a file
+#   maxSpillBytes: 67108864     # per-stream full-output spill cap
+#   graceMs: 3000               # kill escalation / pipe-drain grace
+#   enableRunInBackground: true # expose run_in_background while jobs are composed
+#   promoteOnTimeout: true      # timed-out foreground commands keep running as jobs
+#   preferPrompt: true          # inject the "prefer niubash over pwsh" section
+- insert:
+    - id: niubash
+      name: 'dsh-niubash-windows'
+      config: {}
