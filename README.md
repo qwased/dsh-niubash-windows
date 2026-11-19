@@ -46,14 +46,28 @@ for PowerShell-specific work.
 
 ## Install
 
-From this checkout, in a DSH session with plugin management:
+From npm, through any of the three DSH entry points:
+
+```text
+plugin_manager install_bundle target=dsh-niubash-windows
+```
+
+```bash
+dsh plugin --profile <profile> add dsh-niubash-windows
+```
+
+or **Plugins → Add plugin** with `dsh-niubash-windows` as the install spec.
+Each route activates the bundle in that profile, inserting one row
+(`id: niubash`); no profile file is edited by hand. Pin a version with
+`dsh-niubash-windows@0.2.0` when a later release should not be picked up.
+
+From a local checkout (development), install the directory instead:
 
 ```text
 plugin_manager install_bundle target=D:\dsh-wsl-project\dsh-niubash-windows
 ```
 
-or **Plugins → Add plugin → local directory**. The bundle inserts one row
-(`id: niubash`) into the profile; no other profile file is edited by hand.
+or **Plugins → Add plugin → local directory**.
 
 ## Configuration
 
