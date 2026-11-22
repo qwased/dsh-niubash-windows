@@ -15,8 +15,9 @@ for PowerShell-specific work.
   section, `[output truncated; full output: <path>]`, `[timed out after Nms]`,
   `[stopped: <reason>]`, `[exit code: N]`. Non-zero exits are results, not
   tool errors.
-- Per-stream output keeps the last 64,000 bytes in memory; overflow spills the
-  complete stream to a temp file (cap 64 MiB) whose path is reported.
+- Per-stream output keeps the last 64,000 bytes in memory (the retained tail
+  can run one read chunk longer); overflow spills the stream to a temp file
+  whose path is reported, capped at 64 MiB.
 - With the job runtime composed (`dsh-jobs-local` + `dsh-tool-jobs`, part of
   the standard desktop profile):
   - `run_in_background: true` returns a job id immediately; collect with
@@ -40,8 +41,8 @@ for PowerShell-specific work.
 
 | Component | Version |
 |---|---|
-| DeepSeek Harness | 0.1.0-rc.2 … <0.3.0 (verified on 0.2.2-rc.3, desktop profile) |
-| Niubash | 1.5.0 or later (`niu.exe`, MIT, <https://unixwin.dev>) |
+| DeepSeek Harness | 0.1.0-rc.2 … <0.3.0 (verified on 0.2.2-rc.5, desktop profile) |
+| Niubash | 1.5.0 or later (`niu.exe`, MIT, <https://unixwin.dev>); baseline tested on 1.5.1 (rubash `649b3be39b76`, WinuxCmd 1.2.2) |
 | OS | Windows (verified on Windows 11; other builds untested) |
 
 ## Install
@@ -59,7 +60,7 @@ dsh plugin --profile <profile> add dsh-niubash-windows
 or **Plugins → Add plugin** with `dsh-niubash-windows` as the install spec.
 Each route activates the bundle in that profile, inserting one row
 (`id: niubash`); no profile file is edited by hand. Pin a version with
-`dsh-niubash-windows@0.2.0` when a later release should not be picked up.
+`dsh-niubash-windows@0.2.1` when a later release should not be picked up.
 
 From a local checkout (development), install the directory instead:
 
@@ -136,12 +137,13 @@ set `registerSkill: false` to opt out entirely.
 - No PTY emulation; interactive fullscreen programs are out of scope.
 - `niu -c` loads no rc and no plugins; use `NIU_ENV=<file>` when a command
   needs an initialization file.
-- Niubash 1.5.0 pipeline argv defect (upstream rubash#3511): a double-quoted
-  pipeline argument mixing a live command substitution with an apostrophe
-  delivers U+0017 instead of `'`. Compute the substitution into a variable
-  before the pipeline until the fixed engine ships. Not reproduced on rubash
-  `29bbf52481c3` (verified 2026-11-17); check the pin with
-  `"$NIU_SHELL" --version`.
+- Niubash 1.5.0 pipeline argv defect (upstream rubash#3511, fixed upstream): a
+  double-quoted pipeline argument mixing a live command substitution with an
+  apostrophe delivered U+0017 instead of `'`. Not reproduced on rubash
+  `29bbf52481c3` (2026-11-17) nor on the 1.5.1 pin `649b3be39b76`
+  (2026-11-23) — `echo "it's $(echo ok)" | cat` is byte-exact. Keep the
+  variable-first workaround only for engines older than 1.5.1; check the pin
+  with `"$NIU_SHELL" --version`.
 - The child environment inherits the harness environment (minus ambient
   `DSH_*`, plus the managed snapshot); unlike the pwsh executor it does not
   scrub ambient credentials beyond that.

@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.2.1
+
+Documentation only, no runtime change. Re-verified against Niubash 1.5.1
+(rubash `649b3be39b76`, WinuxCmd 1.2.2) on DSH 0.2.2-rc.5.
+
+- The rubash#3511 apostrophe/argv defect is recorded as fixed upstream and no
+  longer reproducing: `echo "it's $(echo ok)" | cat` is byte-exact on the 1.5.1
+  pin (verified 2026-11-23), so the variable-first workaround is scoped to
+  engines older than 1.5.1 instead of being presented as current.
+- The `command -v sed` bare-name symptom is now conditional on older WinuxCmd
+  builds (1.5.1 prints the full path), and the requirement table names the tested
+  engine baseline.
+- The bundled skill records the PTC call contract measured on this host:
+  required `description`, `workdir` validation before spawn, rejections instead
+  of result codes, the absence of marker lines in the structured streams,
+  `promoted.output` as a consuming read, and `timeoutMs` layering against the
+  `run_code` budget.
+- Truncation wording made exact: the retained tail can exceed `maxOutputBytes` by
+  one read chunk, and a spill that reaches `maxSpillBytes` is not flagged.
+
 ## 0.2.0
 
 - Bundled troubleshooting skill, installed with the package: `skill/SKILL.md`

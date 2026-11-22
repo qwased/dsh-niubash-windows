@@ -73,10 +73,13 @@ The structured result of `await tools.niubash({...})` (PTC) has three shapes:
   Track every job id you start; collect with `job_output` (`wait: true` only when
   genuinely blocked) and kill jobs that stopped mattering.
 
-Truncation is per stream: the last `maxOutputBytes` (default 64,000) stay in
-memory; overflow spills the complete stream to a temp file (cap
-`maxSpillBytes`, 64 MiB) and reports its `spillPath`. `truncated` refers to that
-tail cap. Read `spillPath` with the read tool when the tail is not enough.
+Truncation is per stream: the retained tail is `maxOutputBytes` (default
+64,000) bytes or a little more — whole chunks are kept, so it can exceed the cap
+by up to one read chunk. Overflow spills the stream to a temp file capped at
+`maxSpillBytes` (64 MiB) and reports its `spillPath`; a spill that reaches that
+cap is **not** flagged, so treat a 64 MiB spill as possibly incomplete.
+`truncated` describes the memory tail, not the spill file. Read `spillPath`
+with the read tool when the tail is not enough.
 
 Sandbox: niubash runs with the harness process authority and cannot enforce the
 DSH file sandbox. Under a confining session policy (`read-only` /
@@ -93,19 +96,40 @@ sandbox. It works in `danger-full-access` sessions.
   output was captured.
 - Slice `stdout.text` / `stderr.text` in the script when only a summary is needed;
   curate what you print, because only printed/returned values leave the program.
+- `description` is required and non-empty (`ToolArgsError` otherwise) even in
+  PTC, and `workdir` must name an existing directory — that is refused before
+  spawn, not reported as a missing `niu.exe`.
+- Rejections are not results: an unusable argument, a missing `niu.exe`, the
+  sandbox refusal above, and an aborted call all **throw**. Wrap the call in
+  `try/catch`; a refusal has no `exitCode` to inspect.
+- The structured `stdout.text` / `stderr.text` carry **no marker lines** — no
+  `[output truncated; full output: …]`, no `[stderr]` section, no
+  `[exit code: N]`. Those exist only in the rendered text a non-PTC tool call
+  returns, so check `truncated` / `spillPath` / `exitCode` yourself.
+- `promoted.output` is a **consuming** read: `job_output` on the same job
+  continues after it, so the two together are the whole stream (verified —
+  a promoted `echo early; sleep 3; echo late` yields `early`, then `late`).
+- Timeout layering: the tool default is 120,000 ms and `run_code`'s default
+  budget is the same, so a long nested call can consume the program budget and
+  lose its captured output. Pass a smaller `timeoutMs` for anything near that,
+  or start it with `run_in_background` and do one short `job_output` wait;
+  `maxTimeoutMs` caps at 600,000 ms.
 
 ## Known upstream defects
 
-- Niubash 1.5.0 (rubash before `0ef814fb`) corrupts a pipeline member's argv: in
+- Niubash 1.5.0 (rubash before `0ef814fb`) corrupted a pipeline member's argv: in
   a double-quoted word that mixes a live command substitution with an
-  apostrophe, the child receives U+0017 instead of `'`. Upstream fix: rubash#3511
-  (merged). Workaround: compute the substitution into a variable first, e.g.
-  `x=$(date); cmd "it's $x" | cat`. `niu --ec` does not avoid it. Check the pinned
-  engine with `"$NIU_SHELL" --version` (it prints the rubash rev).
-- Live-verified divergence (2026-11-17, Niubash 1.5.0 / rubash `29bbf52481c3` /
-  WinuxCmd 1.2.1): `echo "it's $(echo ok)" | cat` printed `it's ok` with no
-  U+0017 — the defect did not reproduce on this pin. Keep the workaround for
-  older pins; the host wins for this session.
+  apostrophe, the child received U+0017 instead of `'`. Fixed upstream
+  (rubash#3511). Not reproduced on `29bbf52481c3` (2026-11-17) nor on the 1.5.1
+  pin `649b3be39b76` (2026-11-23): `echo "it's $(echo ok)" | cat` prints
+  `it's ok` byte-exact (`od` shows no `17`). Keep the variable-first workaround
+  only for engines older than 1.5.1; `niu --ec` did not avoid it on 1.5.0. Check
+  the pin with `"$NIU_SHELL" --version` (it prints the rubash rev).
+- Identity false alarm: `uname -s` prints `MSYS_NT-<ver>` under a real `niu` as
+  well, because the bundled `uname` is WinuxCmd's compat build — so the
+  upstream skill's "MSYS_NT/MINGW64_NT means the host fell back to Git Bash"
+  rule (niubash#1031) self-reports here. Test identity instead:
+  `[ -n "$NIU_SHELL" ] && "$NIU_SHELL" --version` (verified 2026-11-23 on 1.5.1).
 
 ## Symptom → verify → reference
 
@@ -115,13 +139,14 @@ For file inspection prefer DSH's read/grep/glob tools over shell `cat`/`find`.
 | Symptom | Live check | Deep reference |
 |---|---|---|
 | command missing, old, or a surprising build | `command -v <tool>; type -a <tool>` | `references/quickref.md` |
-| `command -v sed` prints bare `sed` | `type -a sed` — sed is a shell emulation of the WinuxCmd exe, not a resolution failure | `references/quickref.md` |
+| `command -v sed` prints a bare `sed` instead of a path | `type -a sed` — on older builds this was the shell's WinuxCmd emulation, not a resolution failure; on 1.5.1 / WinuxCmd 1.2.2 it already prints the full path | `references/quickref.md` |
 | install or links look broken | `"$NIU_SHELL" doctor; wpm links list` | `references/wpm.md` |
 | prompt or alias missing | `echo "$PS1"; type -a <alias>` | `references/prompt-plugins.md` |
 | plugin manifest / generated loader | `ls ~/.niubash/generated; niu plugin --help` | `references/prompt-plugins.md` |
 | path/resolution question | `pwd; /usr/bin/pwd; command -v <tool>` | `references/paths.md` |
 | missing Unix command | `wpm installed; wpm search NAME` | `references/wpm.md` |
 | skill absent from the session catalog | new session after DSH restart; `registerSkill` row config; provider `dsh-niubash-windows` | this package's README |
+| is this really niu, or did the host fall back to Git Bash | `[ -n "$NIU_SHELL" ] && "$NIU_SHELL" --version` — `uname -s` prints `MSYS_NT` under a real niu too | `references/paths.md` |
 
 Useful facts: `NIU_SHELL` carries the `niu.exe` path to every child; when the host
 left `SHELL` unset, Niubash fills it with the same path in `C:/...` spelling

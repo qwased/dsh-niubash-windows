@@ -50,3 +50,6 @@ override: `DSH_NIUBASH_PATH` (absolute path to `niu.exe`).
   Windows command line.
 - Inside the shell, `git`/`rg` and the Unix toolbelt are Niubash's bundled
   builds; use full executable paths for stock Windows tools.
+
+Verified against Niubash 1.5.1 (rubash `649b3be39b76`, WinuxCmd 1.2.2) on DSH
+0.2.2-rc.5.
