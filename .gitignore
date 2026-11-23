@@ -1,3 +1,16 @@
 node_modules/
 *.log
 .DS_Store
+real-test/
+session.v4.jsonl
+
+dist/
+
+# Local checkout of the Niubash source tree (indexed as its own project).
+niubash/
+
+# Local acceptance/report archive (contains copied node_modules trees).
+archive/
+
+# npm pack artifacts.
+*.tgz

@@ -1,0 +1,7 @@
+# codebase-memory index exclusions for this repository.
+# The cloned Niubash source lives here for reference only; it is indexed as its
+# own project (`niubash`) and must not be folded into the plugin's graph.
+niubash/
+
+# Local real-machine sandbox test workspace (isolated profile artifacts).
+real-test/

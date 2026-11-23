@@ -1,6 +1,6 @@
 ---
 name: niubash
-description: Troubleshooting and deep contract for the Niubash shell behind DSH's niubash tool on Windows. Load when paths look wrong (pwd prints /c/... while a native child receives C:\...), a command is missing or resolves to a surprising build, a niu prompt/alias/plugin does not load, wpm install or link repair is needed, the niu debugger/DAP/base64 handoff is involved, a PTC run_code call fails on argument serialization, or documented engine behaviour differs from bash. Do not load for ordinary command execution — the tool description owns calling conventions, truncation, exit codes, timeouts and the shell choice. 中文触发：路径不对 / 命令找不到或版本奇怪 / wpm 安装或链接修复 / niu 调试器 / 引擎行为与 bash 不一致 / PTC 参数序列化报错.
+description: Troubleshooting and deep contract for the Niubash shell behind DSH's niubash tool on Windows. Load when paths look wrong (pwd prints /c/... while a native child receives C:\...), a command is missing or resolves to a surprising build, a niu prompt/alias/plugin does not load, wpm install or link repair is needed, the niu debugger/DAP/base64 handoff is involved, a PTC run_code call fails on argument serialization, or documented engine behaviour differs from bash. Also load for sandbox denial / escalation error codes / write permission failures / SetNamedSecurityInfoW Win32 5, and for the exact toolbelt, path, force-kill and evidence rules this tool intentionally keeps out of its description. Do not load for ordinary command execution — the tool description owns calling conventions, truncation, exit codes, timeouts and the shell choice. 中文触发：路径不对 / 命令找不到或版本奇怪 / wpm 安装或链接修复 / niu 调试器 / 引擎行为与 bash 不一致 / PTC 参数序列化报错 / 沙盒拒绝 / 升级报错 / 写权限失败.
 license: MIT
 metadata:
   upstream: https://unixwin.dev
@@ -13,6 +13,23 @@ Troubleshooting companion to the `niubash` tool. The tool description and the
 "Shell choice (niubash)" prompt section own ordinary calling conventions; this
 skill owns the engine contract underneath them. Run the live check first; use
 `references/` when the host cannot answer.
+
+## Facts the tool description leaves here
+
+The description keeps only what an ordinary call needs. Everything below is
+deliberately owned by this skill, so do not re-derive it from the description.
+
+| Topic | Contract |
+|---|---|
+| Shell identity | native Windows bash-compatible shell (`niu -c`); no WSL, no MSYS, no Cygwin, and no PTY |
+| Toolbelt resolution | `git` → `niugit`, `rg` → bundled ripgrep, `ls`/`find`/`grep`/`awk`/`sed` → WinuxCmd, `tar` → Windows `bsdtar`; call the full executable path when the stock Windows tool is required |
+| Path inputs | `C:/...` always works; `/d/...` and bare `D:` reach drive roots; `/tmp` is the real Windows temp directory; `~` is `USERPROFILE` |
+| Path outputs | `pwd`/`$PWD` print the `/c/...` dialect while native children receive `C:\...`; never compare a path with the command input string (full table in `references/paths.md`) |
+| Exits and killing | a non-zero exit is a result, not a tool error; a force-killed command on Windows settles as `[exit code: 1]` with no signal marker, so it means an interruption rather than a command failure |
+
+Nothing here changes tool routing: niubash stays the default shell, pwsh keeps
+PowerShell-specific work, and file reading, editing and searching stay with
+the read, grep, glob and edit tools.
 
 ## State resets between calls
 
@@ -81,10 +98,59 @@ cap is **not** flagged, so treat a 64 MiB spill as possibly incomplete.
 `truncated` describes the memory tail, not the spill file. Read `spillPath`
 with the read tool when the tail is not enough.
 
-Sandbox: niubash runs with the harness process authority and cannot enforce the
-DSH file sandbox. Under a confining session policy (`read-only` /
-`workspace-write`) the tool refuses to run — use `pwsh` there, which enforces the
-sandbox. It works in `danger-full-access` sessions.
+Sandbox: a blocked write renders the standard marker
+`[sandbox: file access denied under <mode> mode]`. Mode semantics, one-shot
+escalation, error codes and evidence rules live in
+`## Sandbox denials and escalation` below; do not work around a denial.
+
+## Sandbox denials and escalation
+
+niubash is confined through DSH's sandbox seam exactly like bash and pwsh, so
+the first-party wording applies. What each mode means:
+
+- `read-only` denies writes, including the workspace and temp directories.
+- `workspace-write` allows the workspace root and the verified platform temp
+  areas.
+- `danger-full-access` runs unconfined; Windows confinement restricts writes only.
+- A sandbox denial is a policy result, not a command failure to work around.
+- Escalation is one-shot and does not change the session's standing mode.
+- Repeating the current mode needs no justification and does not open approval.
+- A narrower mode is not an escalation.
+
+Escalation error codes and the documented next step:
+
+| Code | Next step |
+|---|---|
+| `SANDBOX_ESCALATION_INVALID_ARGUMENT` | Fix the arguments; a narrower mode is not an escalation. |
+| `SANDBOX_ESCALATION_REJECTED` | Stop and explain. Under the `never` approval policy the host short-circuits to `rejected`, so do not claim the user actually clicked reject. |
+| `SANDBOX_ESCALATION_UNAVAILABLE` | No approval channel exists in this composition; do not retry repeatedly. |
+| `SANDBOX_ESCALATION_CANCELLED` | The approval produced no allow/deny decision; it is not the same as a user rejection. |
+| `SANDBOX_PREPARATION_FAILED` | Inspect the sandbox preparation error; a Win32 5 here is the ACL case below. |
+| `SANDBOX_INVALID_TEMP_ROOT` | The workspace contains the temp root, so preparation fails; treat it as an install/workspace configuration problem. |
+
+ACL precondition failures are not niu engine faults. The symptom is a command
+tool failing *before* it runs, with `sandbox-local: windows-acl workspace grant
+failed` and `SetNamedSecurityInfoW ... Win32 5` on stderr; every confined shell
+call is blocked until the ACLs are repaired. Load the
+`diagnose-windows-sandbox-acl` skill and run its bundled command against the
+path instead of editing mode or retrying the command.
+
+Evidence rules — check the exit code, stderr and a positive control before
+concluding anything:
+
+- GUI and ordinary rendering show markers; the PTC structured streams do not.
+  Use `exitCode`, `sandbox.denied` and `sandbox.mode` there.
+- Session records can be checked for the `approval/asked` and
+  `approval/decided` pair when an approval decision is in doubt.
+- The two `niubash:` warn lines (approval/confine failures) carry mode, code and
+  call id, but the default Cordis logger has no persistent sink: do not treat
+  "no line in a terminal or in `~/.dsh/logs`" as evidence either way unless an
+  exporter was registered for the probe.
+- A background job's denial marker can appear inline in its status/detail.
+- A script that swallows a failure can end the whole command with exit 0, and
+  the current `denied` flag may then be false. Inspect the raw stderr, the
+  exit-code propagation and the target file; never infer a successful write
+  from the absence of a marker.
 
 ## PTC (run_code) bridge rules
 
@@ -99,16 +165,25 @@ sandbox. It works in `danger-full-access` sessions.
 - `description` is required and non-empty (`ToolArgsError` otherwise) even in
   PTC, and `workdir` must name an existing directory — that is refused before
   spawn, not reported as a missing `niu.exe`.
-- Rejections are not results: an unusable argument, a missing `niu.exe`, the
-  sandbox refusal above, and an aborted call all **throw**. Wrap the call in
-  `try/catch`; a refusal has no `exitCode` to inspect.
-- The structured `stdout.text` / `stderr.text` carry **no marker lines** — no
+- Rejections are not results: an unusable argument, a missing `niu.exe`, a
+  sandbox runner failure or an unavailable/invalid escalation, and an aborted
+  call all **throw**. Wrap the call in `try/catch`; a refusal has no `exitCode`
+  to inspect. A policy denial is different: the command ran, so it is a result
+  carrying structured sandbox facts and a non-zero exit.
+- Structured `stdout.text` / `stderr.text` contain **no marker lines** — no
   `[output truncated; full output: …]`, no `[stderr]` section, no
-  `[exit code: N]`. Those exist only in the rendered text a non-PTC tool call
-  returns, so check `truncated` / `spillPath` / `exitCode` yourself.
-- `promoted.output` is a **consuming** read: `job_output` on the same job
-  continues after it, so the two together are the whole stream (verified —
-  a promoted `echo early; sleep 3; echo late` yields `early`, then `late`).
+  `[exit code: N]` — so check `truncated` / `spillPath` / `exitCode` yourself.
+  The GUI and session rendering may still contain them.
+- For a policy denial, assert `exitCode` and `sandbox.denied`; use
+  `sandbox.mode` for the call's effective mode.
+- `run_code` escalation approval resolves before the program body; program-local
+  elapsed time and `timeoutMs` do not include the approval wait.
+- A program-level escalation does not propagate to nested tools. Nested tools
+  retain their own policies and approvals.
+- `promoted.output` is a consuming read and may initially be empty; continue
+  with `job_output`. It does not repeat what `job_output` will return, so the
+  two together are the whole stream (verified — a promoted
+  `echo early; sleep 3; echo late` yields `early`, then `late`).
 - Timeout layering: the tool default is 120,000 ms and `run_code`'s default
   budget is the same, so a long nested call can consume the program budget and
   lose its captured output. Pass a smaller `timeoutMs` for anything near that,
@@ -147,6 +222,7 @@ For file inspection prefer DSH's read/grep/glob tools over shell `cat`/`find`.
 | missing Unix command | `wpm installed; wpm search NAME` | `references/wpm.md` |
 | skill absent from the session catalog | new session after DSH restart; `registerSkill` row config; provider `dsh-niubash-windows` | this package's README |
 | is this really niu, or did the host fall back to Git Bash | `[ -n "$NIU_SHELL" ] && "$NIU_SHELL" --version` — `uname -s` prints `MSYS_NT` under a real niu too | `references/paths.md` |
+| a confined call fails before the command starts, with `SetNamedSecurityInfoW ... Win32 5` | none in this tool — run the `diagnose-windows-sandbox-acl` skill's bundled command on the path | `## Sandbox denials and escalation` |
 
 Useful facts: `NIU_SHELL` carries the `niu.exe` path to every child; when the host
 left `SHELL` unset, Niubash fills it with the same path in `C:/...` spelling

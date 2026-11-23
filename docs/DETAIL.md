@@ -42,12 +42,13 @@ override: `DSH_NIUBASH_PATH` (absolute path to `niu.exe`).
 ## Essential limitations
 
 - Windows only; on other platforms the plugin is inert.
-- Commands run with the harness process authority. Under a confining session
-  sandbox (`read-only` / `workspace-write`) the tool refuses to run — use
-  `pwsh`, which enforces the sandbox.
+- Windows confinement is a write boundary only (reads and network stay open)
+  and reports `partial` enforcement; `additionalWritableRoots` apply to file
+  tools, not to processes. `danger-full-access` sessions run unconfined by
+  design.
 - No PTY: interactive fullscreen programs are unsupported. No rc/plugin
-  loading (`niu -c`); a single command is capped at ~32K characters by the
-  Windows command line.
+  loading (`niu -c`); a single command is capped at 32000 characters, with the
+  sandbox runner prefix sharing the same Windows ~32K command-line budget.
 - Inside the shell, `git`/`rg` and the Unix toolbelt are Niubash's bundled
   builds; use full executable paths for stock Windows tools.
 

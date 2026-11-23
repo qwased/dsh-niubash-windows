@@ -28,10 +28,11 @@ for PowerShell-specific work.
 - Managed `DSH_*` environment: collected through `ctx.shellEnv` exactly like
   pwsh, layered over the harness environment with `NO_COLOR=1 PAGER=cat
   GIT_PAGER=cat`.
-- Safety: niubash runs with the harness process authority and cannot enforce
-  the DSH file sandbox. Under a confining session policy (`read-only` or
-  `workspace-write`) the tool refuses to run and points at pwsh; it works in
-  `danger-full-access` sessions.
+- Sandbox: commands may run under a file sandbox. A blocked file operation is
+  reported as `[sandbox: file access denied under <mode> mode]`, a policy denial.
+  Windows confinement restricts writes only; reads and network are not confined,
+  and enforcement is reported `partial`. See the bundled skill for mode details,
+  one-shot escalation, PTC behavior, and troubleshooting.
 - When `niu.exe` is missing, a same-schema stub is registered: every call
   fails with every checked path and how to fix it, and the prompt says
   "use pwsh" instead of advertising a preference that cannot be honored.
@@ -65,7 +66,7 @@ Each route activates the bundle in that profile, inserting one row
 From a local checkout (development), install the directory instead:
 
 ```text
-plugin_manager install_bundle target=D:\dsh-wsl-project\dsh-niubash-windows
+plugin_manager install_bundle target=<absolute path to this checkout>
 ```
 
 or **Plugins → Add plugin → local directory**.
@@ -108,8 +109,10 @@ file, or an unexpanded `%NAME%` is reported, not silently ignored.
 Inside niubash, `git`/`rg`/`ls`/`find`/`grep`/`awk`/`sed` resolve to Niubash's
 bundled WinuxCmd builds (`tar` is Windows' bsdtar); call the full executable
 path for the stock tool. `pwd` prints the `/c/...` dialect while native
-children receive `C:\...`. A single command is limited to about 32K characters
-by the Windows command line — write longer scripts to a file and run it.
+children receive `C:\...`. A single command is capped at 32000 characters; under
+a sandbox the runner prefix shares the same Windows ~32K command-line budget, so
+the exact limit can be slightly lower — write longer scripts to a file and run
+it.
 
 ## Bundled skill
 
@@ -119,21 +122,27 @@ The package ships a troubleshooting skill (`skill/SKILL.md` +
 package — no separate `~/.dsh/skills` entry — and appears in the skill catalog
 of new sessions after a DSH restart. The skill is deliberately gated: it loads
 for path anomalies, missing/surprising commands, wpm/doctor repair, niu
-debugger questions, PTC serialization failures, and engine-vs-bash divergence,
-not for ordinary command execution (the tool description owns that contract).
+debugger questions, PTC serialization failures, engine-vs-bash divergence, and
+sandbox denials, escalation error codes or write-permission failures, not for
+ordinary command execution (the tool description owns that contract).
 
 Adapted from the pi-niubash-windows skill: the Pi codemode payload section is
 replaced by the DSH result contract (separate streams, exit-code markers,
 timeout promotion, spill paths) and PTC `run_code` bridge rules (lossless-JSON
-arguments and return values). `references/` are verbatim upstream Niubash
-snapshots with SHA256 provenance in `ATTRIBUTION.md`. A user-level
-`~/.dsh/skills/niubash` (rank 400) or project skill overrides the bundled copy;
-set `registerSkill: false` to opt out entirely.
+arguments and return values). Since 0.3.1 the skill also owns the facts the
+streamlined tool description and prompt section leave out: the bundled
+toolbelt mapping, the path input/output tables, force-kill settlement, sandbox
+denial/escalation error codes and evidence rules. `references/` are verbatim
+upstream Niubash snapshots with SHA256 provenance in `ATTRIBUTION.md`. A
+user-level `~/.dsh/skills/niubash` (rank 400) or project skill overrides the
+bundled copy; set `registerSkill: false` to opt out entirely.
 
 ## Known limitations
 
-- No file-sandbox enforcement (see Safety above); confining sessions must use
-  pwsh.
+- Windows confinement is a write boundary only (reads and network stay open)
+  and reports `partial` enforcement; `additionalWritableRoots` apply to file
+  tools, not to processes. `danger-full-access` sessions run unconfined by
+  design.
 - No PTY emulation; interactive fullscreen programs are out of scope.
 - `niu -c` loads no rc and no plugins; use `NIU_ENV=<file>` when a command
   needs an initialization file.

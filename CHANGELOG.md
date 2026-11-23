@@ -1,5 +1,47 @@
 # Changelog
 
+## 0.3.1
+
+- Streamline the tool description and shell-choice prompt: keep ordinary calling
+  contracts at the point of use and move deep path/toolbelt details into the skill.
+- Align the sandbox wording with first-party bash/pwsh; remove the inaccurate
+  workspace-only and unconditional-approval promises without changing tool routing.
+- Expand the bundled skill with sandbox/ACL troubleshooting, escalation error
+  handling, PTC approval and nested-policy boundaries, and reliable evidence rules.
+- Correct the installation/live-test guide for PTC assertions, restricted-session
+  diagnostics, positive-control process checks, per-session artifacts, and real
+  multi-plugin compatibility checks.
+- No command execution, sandbox classification, escalation, result-schema, or job
+  semantics change. `lib/prompt.js` text, the bundled skill, tests and docs are
+  the only edits; `lib/tool.js`, `lib/sandbox.js`, `lib/render.js`, the engines
+  and peer ranges are untouched.
+
+## 0.3.0
+
+> Prepared alongside 0.3.1 but never published on its own: the entries below
+> first ship in 0.3.1.
+
+- Sandbox: commands run confined through `ctx.sandbox.confine()` under
+  `read-only` / `workspace-write` instead of refusing to run; runner failures
+  map to `SANDBOX_UNAVAILABLE`, and denials render the standard sandbox marker.
+- Escalation: one-shot `sandbox_permissions` + `justification` retry with user
+  approval, exposed only when a sandbox backend is composed.
+- Results carry `sandbox: { mode, denied, enforcement }`; background runner
+  failures keep their detail in the job record.
+- Docs, README, DETAIL and the bundled skill describe the confined behavior
+  instead of the old refusal.
+- Registration: the `niu.exe`-missing stub now registers in a minimal
+  composition too (no `jobs`, no sandbox services); a host `dsh-sandbox`
+  without a required export degrades to fail-closed calls instead of removing
+  the tool; approval/confine failures are logged with mode, code, and call id.
+- Background jobs: a sandbox note failure no longer turns a completed command
+  into a failed job, and the killed detail no longer duplicates the kill
+  reason.
+- Optional peers `@deepseek-ai/dsh-sandbox` (`^0.2.2-rc.5`) and
+  `@deepseek-ai/cordis` (`~4.1.0`) are declared; the older `dsh-shell` /
+  `dsh-tools` ranges are unchanged because they rely on the host's
+  prerelease-aware resolution.
+
 ## 0.2.1
 
 Documentation only, no runtime change. Re-verified against Niubash 1.5.1
