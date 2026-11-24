@@ -205,6 +205,19 @@ concluding anything:
   upstream skill's "MSYS_NT/MINGW64_NT means the host fell back to Git Bash"
   rule (niubash#1031) self-reports here. Test identity instead:
   `[ -n "$NIU_SHELL" ] && "$NIU_SHELL" --version` (verified 2026-11-23 on 1.5.1).
+- WinuxCmd 1.2.2 (shipped with Niubash 1.5.1) leaves a stray `<drive-letter>`+U+F03A
+  directory in the CWD on every `mkdir -p` whose operand is a drive-letter absolute
+  path. `/d/x`, `D:/x` and `C:/x` all hit it whatever drive the CWD is on, and even a
+  nonexistent drive (`Z:/x`) leaves `Z`+U+F03A behind after the ENOENT. The target is
+  still created, so the junk directory is the only symptom; a same-drive native-argv
+  `mkdir.exe -p 'D:/a/b'` is worse - it lands the tree relative to the CWD and creates
+  nothing at the absolute path (rc 0). Upstream: winuxcmd#1870, niubash#1101.
+  Workarounds verified on this pin: `install -d <path>` (clean for `/d/...`, `D:/...`,
+  `D:\...` and `C:/...`), a relative path after `cd`, or `cmd.exe /c mkdir "<path>"`.
+  Spot it with `ls -b` (`D\357\200\272`); `find -name "D"` and `rm -rf ./D` cannot match
+  it - clean up by code point from pwsh: `Get-ChildItem -Force | Where-Object {
+  $_.Name -match '[\uE000-\uF8FF]' } | Remove-Item -Recurse -Force`. Never assume the
+  letter is `D`.
 
 ## Symptom → verify → reference
 

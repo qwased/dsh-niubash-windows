@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.3.2
+
+- Document the WinuxCmd 1.2.2 `mkdir -p` defect that leaves a stray
+  `<drive-letter>`+U+F03A directory in the CWD for drive-letter absolute operands
+  (`/c/...`, `C:/...`): it hits every drive regardless of where the CWD lives, and
+  even a nonexistent drive (`Z:/x`) leaves the artifact behind after the ENOENT.
+  The target directory itself is still created, so the stray directory is the only
+  symptom. The tool description now forbids that operand shape and names
+  `install -d` as the replacement; the bundled skill carries the full reproduction,
+  the worse same-drive native-argv variant, three verified workarounds and the
+  code-point cleanup.
+- Evidence: verified on Niubash 1.5.1 / WinuxCmd 1.2.2 across `C:`, `D:` and `E:`.
+  Upstream reports: unixwin/WinuxCmd#1870, unixwin/niubash#1101.
+- No command execution, sandbox classification, escalation, result-schema or job
+  semantics change: `lib/prompt.js` text, the bundled skill and this changelog are
+  the only edits; `lib/tool.js`, `lib/sandbox.js`, `lib/render.js`, the engines and
+  peer ranges are untouched.
+
 ## 0.3.1
 
 - Streamline the tool description and shell-choice prompt: keep ordinary calling

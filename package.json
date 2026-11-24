@@ -1,6 +1,6 @@
 {
   "name": "dsh-niubash-windows",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Niubash (native Windows bash) as a DSH tool, coexisting with pwsh and preferred by prompt guidance; ships a bundled troubleshooting skill registered with the skill registry.",
   "license": "MIT",
   "author": "dsh-niubash-windows contributors",
